@@ -18,6 +18,7 @@ use monero_serai::transaction::{Input, Timelock, Transaction};
 use tower::ServiceExt;
 use tracing::instrument;
 
+use crate::{transactions::TransactionVerificationData, Database, ExtendedConsensusError};
 use cuprate_consensus_rules::{
     transactions::{
         get_absolute_offsets, insert_ring_member_ids, DecoyInfo, Rings, TransactionError,
@@ -25,12 +26,11 @@ use cuprate_consensus_rules::{
     },
     ConsensusError, HardFork, TxVersion,
 };
+use cuprate_types::output_cache::OutputCache;
 use cuprate_types::{
     blockchain::{BlockchainReadRequest, BlockchainResponse},
     OutputOnChain,
 };
-use cuprate_types::output_cache::OutputCache;
-use crate::{transactions::TransactionVerificationData, Database, ExtendedConsensusError};
 
 /// Get the ring members for the inputs from the outputs on the chain.
 ///
@@ -156,7 +156,6 @@ pub async fn get_output_cache<D: Database>(
         panic!("Database sent incorrect response!")
     };
 
-
     Ok(outputs)
 }
 
@@ -177,10 +176,9 @@ pub async fn batch_get_ring_member_info<D: Database>(
             .map_err(ConsensusError::Transaction)?;
     }
 
-    let outputs =if let Some(cache) = cache {
+    let outputs = if let Some(cache) = cache {
         Cow::Borrowed(cache)
     } else {
-
         let BlockchainResponse::Outputs(outputs) = database
             .ready()
             .await?
@@ -253,10 +251,11 @@ pub async fn batch_get_decoy_info<'a, 'b, D: Database>(
         unique_input_amounts.len()
     );
 
-    let outputs_with_amount= if let Some(cache) = cache {
-        unique_input_amounts.into_iter().map(|amount| {
-            (amount, cache.number_outs_with_amount(amount))
-        }).collect()
+    let outputs_with_amount = if let Some(cache) = cache {
+        unique_input_amounts
+            .into_iter()
+            .map(|amount| (amount, cache.number_outs_with_amount(amount)))
+            .collect()
     } else {
         let BlockchainResponse::NumberOutputsWithAmount(outputs_with_amount) = database
             .ready()

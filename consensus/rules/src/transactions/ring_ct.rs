@@ -74,9 +74,17 @@ fn simple_type_balances(rct_sig: &RctProofs) -> Result<(), RingCTError> {
         }
     };
 
-    let sum_inputs = pseudo_outs.iter().map(|p| p.decompress().unwrap()).sum::<EdwardsPoint>();
-    let sum_outputs =
-        rct_sig.base.commitments.iter().map(|p| p.decompress().unwrap()).sum::<EdwardsPoint>() + Scalar::from(rct_sig.base.fee) * *H;
+    let sum_inputs = pseudo_outs
+        .iter()
+        .map(|p| p.decompress().unwrap())
+        .sum::<EdwardsPoint>();
+    let sum_outputs = rct_sig
+        .base
+        .commitments
+        .iter()
+        .map(|p| p.decompress().unwrap())
+        .sum::<EdwardsPoint>()
+        + Scalar::from(rct_sig.base.fee) * *H;
 
     if sum_inputs == sum_outputs {
         Ok(())
@@ -177,8 +185,15 @@ pub(crate) fn check_input_signatures(
                 })
                 .collect::<Vec<_>>();
 
-            let mut matrix =
-                AggregateRingMatrixBuilder::new(&proofs.base.commitments.iter().map(|p| p.decompress().unwrap()).collect::<Vec<_>>(), proofs.base.fee);
+            let mut matrix = AggregateRingMatrixBuilder::new(
+                &proofs
+                    .base
+                    .commitments
+                    .iter()
+                    .map(|p| p.decompress().unwrap())
+                    .collect::<Vec<_>>(),
+                proofs.base.fee,
+            );
 
             rings.iter().try_for_each(|ring| matrix.push_ring(ring))?;
 

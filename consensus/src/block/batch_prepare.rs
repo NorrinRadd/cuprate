@@ -16,22 +16,34 @@ use cuprate_helper::asynch::rayon_spawn_async;
 use cuprate_types::output_cache::OutputCache;
 use cuprate_types::TransactionVerificationData;
 
+use crate::__private::Database;
+use crate::transactions::check_kis_unique;
+use crate::transactions::contextual_data::get_output_cache;
 use crate::{
     batch_verifier::MultiThreadedBatchVerifier,
     block::{free::order_transactions, PreparedBlock, PreparedBlockExPow},
     transactions::start_tx_verification,
     BlockChainContextRequest, BlockChainContextResponse, ExtendedConsensusError,
 };
-use crate::__private::Database;
-use crate::transactions::contextual_data::get_output_cache;
+
+pub struct BatchPrepareCache {
+    pub(crate) output_cache: OutputCache,
+    pub(crate) key_images_spent_checked: bool,
+}
 
 /// Batch prepares a list of blocks for verification.
 #[instrument(level = "debug", name = "batch_prep_blocks", skip_all, fields(amt = blocks.len()))]
 pub async fn batch_prepare_main_chain_blocks<D: Database>(
     blocks: Vec<(Block, Vec<Transaction>)>,
     context_svc: &mut BlockchainContextService,
-    database: D
-) -> Result<(Vec<(PreparedBlock, Vec<TransactionVerificationData>)>, OutputCache), ExtendedConsensusError> {
+    mut database: D,
+) -> Result<
+    (
+        Vec<(PreparedBlock, Vec<TransactionVerificationData>)>,
+        BatchPrepareCache,
+    ),
+    ExtendedConsensusError,
+> {
     let (blocks, txs): (Vec<_>, Vec<_>) = blocks.into_iter().unzip();
 
     tracing::debug!("Calculating block hashes.");
@@ -193,7 +205,16 @@ pub async fn batch_prepare_main_chain_blocks<D: Database>(
     })
     .await?;
 
-    let output_cache = get_output_cache(blocks.iter().flat_map(|(_, txs)| txs.iter()), database).await?;
+    check_kis_unique(blocks.iter().flat_map(|(_, txs)| txs.iter()), &mut database).await?;
 
-    Ok((blocks, output_cache))
+    let output_cache =
+        get_output_cache(blocks.iter().flat_map(|(_, txs)| txs.iter()), database).await?;
+
+    Ok((
+        blocks,
+        BatchPrepareCache {
+            output_cache,
+            key_images_spent_checked: true,
+        },
+    ))
 }

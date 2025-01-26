@@ -31,6 +31,11 @@ use monero_serai::transaction::{Input, Timelock, Transaction};
 use rayon::prelude::*;
 use tower::ServiceExt;
 
+use crate::{
+    batch_verifier::MultiThreadedBatchVerifier,
+    transactions::contextual_data::{batch_get_decoy_info, batch_get_ring_member_info},
+    Database, ExtendedConsensusError,
+};
 use cuprate_consensus_rules::{
     transactions::{
         check_decoy_info, check_transaction_contextual, check_transaction_semantic,
@@ -39,20 +44,16 @@ use cuprate_consensus_rules::{
     ConsensusError, HardFork,
 };
 use cuprate_helper::asynch::rayon_spawn_async;
+use cuprate_types::output_cache::OutputCache;
 use cuprate_types::{
     blockchain::{BlockchainReadRequest, BlockchainResponse},
     CachedVerificationState, TransactionVerificationData, TxVersion,
-};
-use cuprate_types::output_cache::OutputCache;
-use crate::{
-    batch_verifier::MultiThreadedBatchVerifier,
-    transactions::contextual_data::{batch_get_decoy_info, batch_get_ring_member_info},
-    Database, ExtendedConsensusError,
 };
 
 pub mod contextual_data;
 mod free;
 
+use crate::block::BatchPrepareCache;
 pub use free::new_tx_verification_data;
 
 /// An enum representing the type of validation that needs to be completed for this transaction.
@@ -155,7 +156,7 @@ impl VerificationWanted {
         time_for_time_lock: u64,
         hf: HardFork,
         database: D,
-        output_cache: Option<&OutputCache>
+        batch_prep_cache: Option<&BatchPrepareCache>,
     ) -> FullVerification<D> {
         FullVerification {
             prepped_txs: self.prepped_txs,
@@ -164,7 +165,7 @@ impl VerificationWanted {
             time_for_time_lock,
             hf,
             database,
-            output_cache
+            batch_prep_cache,
         }
     }
 }
@@ -218,7 +219,7 @@ pub struct FullVerification<'a, D> {
     time_for_time_lock: u64,
     hf: HardFork,
     database: D,
-    output_cache: Option<&'a OutputCache>
+    batch_prep_cache: Option<&'a BatchPrepareCache>,
 }
 
 impl<D: Database + Clone> FullVerification<'_, D> {
@@ -226,7 +227,12 @@ impl<D: Database + Clone> FullVerification<'_, D> {
     pub async fn verify(
         mut self,
     ) -> Result<Vec<TransactionVerificationData>, ExtendedConsensusError> {
-        check_kis_unique(&self.prepped_txs, &mut self.database).await?;
+        if self
+            .batch_prep_cache
+            .is_none_or(|c| !c.key_images_spent_checked)
+        {
+            check_kis_unique(self.prepped_txs.iter(), &mut self.database).await?;
+        }
 
         let hashes_in_main_chain =
             hashes_referenced_in_main_chain(&self.prepped_txs, &mut self.database).await?;
@@ -253,7 +259,7 @@ impl<D: Database + Clone> FullVerification<'_, D> {
                     }),
                 self.hf,
                 self.database.clone(),
-                self.output_cache,
+                self.batch_prep_cache.map(|c| &c.output_cache),
             )
             .await?;
         }
@@ -266,20 +272,20 @@ impl<D: Database + Clone> FullVerification<'_, D> {
             self.time_for_time_lock,
             self.hf,
             self.database,
-            self.output_cache
+            self.batch_prep_cache.map(|c| &c.output_cache),
         )
         .await
     }
 }
 
 /// Check that each key image used in each transaction is unique in the whole chain.
-async fn check_kis_unique<D: Database>(
-    txs: &[TransactionVerificationData],
+pub(crate) async fn check_kis_unique<D: Database>(
+    mut txs: impl Iterator<Item = &TransactionVerificationData>,
     database: &mut D,
 ) -> Result<(), ExtendedConsensusError> {
-    let mut spent_kis = HashSet::with_capacity(txs.len());
+    let mut spent_kis = HashSet::with_capacity(txs.size_hint().1.unwrap_or(0));
 
-    txs.iter().try_for_each(|tx| {
+    txs.try_for_each(|tx| {
         tx.tx.prefix().inputs.iter().try_for_each(|input| {
             if let Input::ToKey { key_image, .. } = input {
                 if !spent_kis.insert(key_image.0) {
@@ -437,7 +443,7 @@ async fn verify_transactions_decoy_info<D: Database>(
     txs: impl Iterator<Item = &TransactionVerificationData> + Clone,
     hf: HardFork,
     database: D,
-    output_cache: Option<&OutputCache>
+    output_cache: Option<&OutputCache>,
 ) -> Result<(), ExtendedConsensusError> {
     // Decoy info is not validated for V1 txs.
     if hf == HardFork::V1 {
@@ -464,7 +470,7 @@ async fn verify_transactions<D>(
     current_time_lock_timestamp: u64,
     hf: HardFork,
     database: D,
-    output_cache: Option<&OutputCache>
+    output_cache: Option<&OutputCache>,
 ) -> Result<Vec<TransactionVerificationData>, ExtendedConsensusError>
 where
     D: Database,
@@ -485,7 +491,7 @@ where
             .map(|(tx, _)| tx),
         hf,
         database,
-        output_cache
+        output_cache,
     )
     .await?;
 

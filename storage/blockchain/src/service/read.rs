@@ -473,12 +473,7 @@ fn outputs(env: &ConcreteEnv, outputs: HashMap<Amount, HashSet<AmountIndex>>) ->
                 .map(|amount_index| inner_map(amount, amount_index))
                 .collect::<Result<_, _>>()?;
 
-            Ok((
-                (amount,
-                left),
-                (amount,
-                right)
-            ))
+            Ok(((amount, left), (amount, right)))
         })
         .collect::<DbResult<(IndexMap<_, IndexMap<_, _>>, IndexMap<_, IndexSet<_>>)>>()?;
 

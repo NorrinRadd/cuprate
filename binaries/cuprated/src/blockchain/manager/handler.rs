@@ -166,9 +166,12 @@ impl super::BlockchainManager {
     /// This function will panic if any internal service returns an unexpected error that we cannot
     /// recover from or if the incoming batch contains no blocks.
     async fn handle_incoming_block_batch_main_chain(&mut self, batch: BlockBatch) {
-        let Ok((prepped_blocks, mut output_cache)) =
-            batch_prepare_main_chain_blocks(batch.blocks, &mut self.blockchain_context_service, self.blockchain_read_handle.clone())
-                .await
+        let Ok((prepped_blocks, mut output_cache)) = batch_prepare_main_chain_blocks(
+            batch.blocks,
+            &mut self.blockchain_context_service,
+            self.blockchain_read_handle.clone(),
+        )
+        .await
         else {
             panic!();
             batch.peer_handle.ban_peer(LONG_BAN);
@@ -182,7 +185,7 @@ impl super::BlockchainManager {
                 txs,
                 &mut self.blockchain_context_service,
                 self.blockchain_read_handle.clone(),
-                Some(&mut output_cache)
+                Some(&mut output_cache),
             )
             .await
             else {
@@ -407,7 +410,7 @@ impl super::BlockchainManager {
                 prepped_txs,
                 &mut self.blockchain_context_service,
                 self.blockchain_read_handle.clone(),
-                None
+                None,
             )
             .await?;
 

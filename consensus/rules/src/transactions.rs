@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 
+pub use cuprate_types::TxVersion;
+use monero_serai::io::decompress_point;
 use monero_serai::{
     ringct::RctType,
     transaction::{Input, Output, Timelock, Transaction},
 };
-use monero_serai::io::decompress_point;
-pub use cuprate_types::TxVersion;
 
 use crate::{
     batch_verifier::BatchVerifier, blocks::penalty_free_zone, check_point_canonically_encoded,
