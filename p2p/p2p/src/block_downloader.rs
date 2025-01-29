@@ -5,14 +5,14 @@
 //! `struct` documentation for implementation details.
 //!
 //! The block downloader is started by [`download_blocks`].
+use futures::TryFutureExt;
+use monero_serai::{block::Block, transaction::Transaction};
+use std::collections::VecDeque;
 use std::{
     cmp::{max, min, Reverse},
     collections::{BTreeMap, BinaryHeap},
     time::Duration,
 };
-
-use futures::TryFutureExt;
-use monero_serai::{block::Block, transaction::Transaction};
 use tokio::{
     task::JoinSet,
     time::{interval, timeout, MissedTickBehavior},
@@ -42,9 +42,11 @@ mod tests;
 
 use crate::peer_set::{PeerSetRequest, PeerSetResponse};
 use block_queue::{BlockQueue, ReadyQueueBatch};
-use chain_tracker::{BlocksToRetrieve, ChainEntry, ChainTracker};
+use chain_tracker::{BlocksToRetrieve, ChainTracker};
 use download_batch::download_batch_task;
 use request_chain::{initial_chain_search, request_chain_entry_from_peer};
+
+pub use chain_tracker::ChainEntry;
 
 /// A downloaded batch of blocks.
 #[derive(Debug, Clone)]
@@ -95,17 +97,19 @@ pub(crate) enum BlockDownloadError {
 }
 
 /// The request type for the chain service.
-pub enum ChainSvcRequest {
+pub enum ChainSvcRequest<N: NetworkZone> {
     /// A request for the current chain history.
     CompactHistory,
     /// A request to find the first unknown block ID in a list of block IDs.
     FindFirstUnknown(Vec<[u8; 32]>),
     /// A request for our current cumulative difficulty.
     CumulativeDifficulty,
+
+    ValidateEntries(VecDeque<ChainEntry<N>>, usize),
 }
 
 /// The response type for the chain service.
-pub enum ChainSvcResponse {
+pub enum ChainSvcResponse<N: NetworkZone> {
     /// The response for [`ChainSvcRequest::CompactHistory`].
     CompactHistory {
         /// A list of blocks IDs in our chain, starting with the most recent block, all the way to the genesis block.
@@ -123,6 +127,11 @@ pub enum ChainSvcResponse {
     ///
     /// The current cumulative difficulty of our chain.
     CumulativeDifficulty(u128),
+
+    ValidateEntries {
+        valid: VecDeque<ChainEntry<N>>,
+        unknown: VecDeque<ChainEntry<N>>,
+    },
 }
 
 /// This function starts the block downloader and returns a [`BufferStream`] that will produce
@@ -140,7 +149,7 @@ pub fn download_blocks<N: NetworkZone, C>(
     config: BlockDownloaderConfig,
 ) -> BufferStream<BlockBatch>
 where
-    C: Service<ChainSvcRequest, Response = ChainSvcResponse, Error = tower::BoxError>
+    C: Service<ChainSvcRequest<N>, Response = ChainSvcResponse<N>, Error = tower::BoxError>
         + Send
         + 'static,
     C::Future: Send + 'static,
@@ -227,7 +236,7 @@ struct BlockDownloader<N: NetworkZone, C> {
 
 impl<N: NetworkZone, C> BlockDownloader<N, C>
 where
-    C: Service<ChainSvcRequest, Response = ChainSvcResponse, Error = tower::BoxError>
+    C: Service<ChainSvcRequest<N>, Response = ChainSvcResponse<N>, Error = tower::BoxError>
         + Send
         + 'static,
     C::Future: Send + 'static,
@@ -642,7 +651,7 @@ where
                 Some(Ok(res)) = self.chain_entry_task.join_next() => {
                     match res {
                         Ok((client, entry)) => {
-                            if chain_tracker.add_entry(entry).is_ok() {
+                            if chain_tracker.add_entry(entry, &mut self.our_chain_svc).await.is_ok() {
                                 tracing::debug!("Successfully added chain entry to chain tracker.");
                                 self.amount_of_empty_chain_entries = 0;
                             } else {

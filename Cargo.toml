@@ -44,7 +44,7 @@ members = [
 	"helper",
 	"pruning",
 	"test-utils",
-	"types",
+	"types", "binaries/fast-sync-build-hashes",
 ]
 
 [profile.release]

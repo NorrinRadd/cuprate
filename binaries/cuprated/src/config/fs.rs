@@ -14,7 +14,7 @@ pub struct FileSystemConfig {
 impl Default for FileSystemConfig {
     fn default() -> Self {
         Self {
-            data_directory: CUPRATE_DATA_DIR.to_path_buf(),
+            data_directory: CUPRATE_DATA_DIR.to_path_buf().join("test"),
             cache_directory: CUPRATE_CACHE_DIR.to_path_buf(),
         }
     }

@@ -1,0 +1,19 @@
+[package]
+name = "fast-sync-build-hashes"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cuprate-blockchain = { workspace = true, features = ["heed"] }
+cuprate-types      = { workspace = true, features = ["blockchain"] }
+cuprate-database-service = { workspace = true, features = ["serde"] }
+
+clap = { version = "4.5.27", features = ["derive"] }
+tower = { workspace = true }
+hex = "0.4.3"
+tokio = "1.43.0"
+
+blake3 = { workspace = true }
+
+[lints]
+workspace = true
