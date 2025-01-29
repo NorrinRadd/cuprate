@@ -47,6 +47,7 @@ use download_batch::download_batch_task;
 use request_chain::{initial_chain_search, request_chain_entry_from_peer};
 
 pub use chain_tracker::ChainEntry;
+use crate::block_downloader::chain_tracker::ChainTrackerError;
 
 /// A downloaded batch of blocks.
 #[derive(Debug, Clone)]
@@ -651,12 +652,16 @@ where
                 Some(Ok(res)) = self.chain_entry_task.join_next() => {
                     match res {
                         Ok((client, entry)) => {
-                            if chain_tracker.add_entry(entry, &mut self.our_chain_svc).await.is_ok() {
-                                tracing::debug!("Successfully added chain entry to chain tracker.");
+                            match chain_tracker.add_entry(entry, &mut self.our_chain_svc).await {
+
+                             Ok(_) => {   tracing::debug!("Successfully added chain entry to chain tracker.");
                                 self.amount_of_empty_chain_entries = 0;
-                            } else {
+                            },
+                                Err(ChainTrackerError::NewEntryIsEmpty) => {
                                 tracing::debug!("Failed to add incoming chain entry to chain tracker.");
                                 self.amount_of_empty_chain_entries += 1;
+                            },
+                                Err(_) => continue,
                             }
 
                             pending_peers

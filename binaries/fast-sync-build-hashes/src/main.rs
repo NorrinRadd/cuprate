@@ -71,7 +71,7 @@ async fn main() {
 
     drop(read_handle);
 
-    write("hashes_of_hashes.bin", hashes_of_hashes.concat().as_slice()).expect("Could not write file");
+    write("blockchain/fast_sync/hashes_of_hashes.bin", hashes_of_hashes.concat().as_slice()).expect("Could not write file");
 
     println!("Generated hashes up to block height {height}");
 }

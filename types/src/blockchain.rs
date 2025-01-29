@@ -179,6 +179,8 @@ pub enum BlockchainWriteRequest {
     /// Input is an already verified block.
     WriteBlock(VerifiedBlockInformation),
 
+    BatchWriteBlock(Vec<VerifiedBlockInformation>),
+
     /// Write an alternative block to the database,
     ///
     /// Input is the alternative block.

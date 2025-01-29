@@ -43,6 +43,7 @@ pub(crate) struct BlocksToRetrieve<N: NetworkZone> {
 pub(crate) enum ChainTrackerError {
     /// The new chain entry is invalid.
     NewEntryIsInvalid,
+    NewEntryIsEmpty,
     /// The new chain entry does not follow from the top of our chain tracker.
     NewEntryDoesNotFollowChain,
 
@@ -134,7 +135,6 @@ impl<N: NetworkZone> ChainTracker<N> {
     pub(crate) fn block_requests_queued(&self, batch_size: usize) -> usize {
         self.valid_entries
             .iter()
-            .chain(self.unknown_entries.iter())
             .map(|entry| entry.ids.len().div_ceil(batch_size))
             .sum()
     }
@@ -155,14 +155,10 @@ impl<N: NetworkZone> ChainTracker<N> {
         }
 
         if chain_entry.ids.len() == 1 {
-            return Err(ChainTrackerError::NewEntryDoesNotFollowChain);
+            return Err(ChainTrackerError::NewEntryIsEmpty);
         }
 
-        if self
-            .unknown_entries
-            .back()
-            .or(self.valid_entries.back())
-            .is_some_and(|last_entry| last_entry.ids.last().unwrap() != &chain_entry.ids[0])
+        if self.top_seen_hash != chain_entry.ids[0]
         {
             return Err(ChainTrackerError::NewEntryDoesNotFollowChain);
         }
@@ -180,7 +176,7 @@ impl<N: NetworkZone> ChainTracker<N> {
 
         let ChainSvcResponse::ValidateEntries {
             mut valid,
-            mut unknown,
+            unknown,
         } = our_chain_svc
             .ready()
             .await
@@ -196,7 +192,7 @@ impl<N: NetworkZone> ChainTracker<N> {
         };
 
         self.valid_entries.append(&mut valid);
-        self.unknown_entries.append(&mut unknown);
+        self.unknown_entries = unknown;
 
         Ok(())
     }
