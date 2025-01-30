@@ -47,10 +47,10 @@ impl From<BlockDownloaderConfig> for cuprate_p2p::block_downloader::BlockDownloa
 impl Default for BlockDownloaderConfig {
     fn default() -> Self {
         Self {
-            buffer_bytes: 1_000_000_000,
-            in_progress_queue_bytes: 300_000_000,
+            buffer_bytes: 500_000_000,
+            in_progress_queue_bytes: 400_000_000,
             check_client_pool_interval: Duration::from_secs(15),
-            target_batch_bytes: 15_000_000,
+            target_batch_bytes: 10_000_000,
         }
     }
 }
@@ -104,6 +104,7 @@ impl SharedNetConfig {
             max_gray_list_length: self.address_book_config.max_gray_list_length,
             peer_store_directory: address_book_path(cache_dir, network),
             peer_save_period: self.address_book_config.peer_save_period,
+            ban_list_path: Some("ban_list.txt".into())
         }
     }
 }
@@ -111,7 +112,7 @@ impl SharedNetConfig {
 impl Default for SharedNetConfig {
     fn default() -> Self {
         Self {
-            outbound_connections: 64,
+            outbound_connections: 128,
             extra_outbound_connections: 8,
             max_inbound_connections: 128,
             gray_peers_percent: 0.7,

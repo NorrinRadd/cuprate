@@ -133,6 +133,8 @@ pub trait NetZoneAddress:
     fn ban_id(&self) -> Self::BanID;
 
     fn should_add_to_peer_list(&self) -> bool;
+
+    fn read_ban_line(s: &str) -> Vec<Self>;
 }
 
 /// An abstraction over a network zone (tor/i2p/clear)

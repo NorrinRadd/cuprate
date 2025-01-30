@@ -40,6 +40,10 @@ impl NetZoneAddress for TestNetZoneAddr {
     fn should_add_to_peer_list(&self) -> bool {
         true
     }
+
+    fn read_ban_line(s: &str) -> Vec<Self> {
+        todo!()
+    }
 }
 
 impl std::fmt::Display for TestNetZoneAddr {

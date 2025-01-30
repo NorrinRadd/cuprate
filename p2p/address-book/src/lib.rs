@@ -11,7 +11,10 @@
 //! and so peers will only get told about peers they can
 //! connect to.
 use std::{io::ErrorKind, path::PathBuf, time::Duration};
-
+use std::collections::HashMap;
+use std::io::BufRead;
+use std::path::Path;
+use std::time::Instant;
 use cuprate_p2p_core::{NetZoneAddress, NetworkZone};
 
 mod book;
@@ -31,6 +34,8 @@ pub struct AddressBookConfig {
     pub max_gray_list_length: usize,
     /// The location to store the peer store files.
     pub peer_store_directory: PathBuf,
+
+    pub ban_list_path: Option<PathBuf>,
     /// The amount of time between saving the address book to disk.
     pub peer_save_period: Duration,
 }
@@ -72,9 +77,32 @@ pub async fn init_address_book<Z: BorshNetworkZone>(
         }
     };
 
-    let address_book = book::AddressBook::<Z>::new(cfg, white_list, gray_list, Vec::new());
+    let peers_to_ban = if let Some(ban_list_path) = &cfg.ban_list_path {
+        read_ban_list::<Z>(ban_list_path).await
+    } else {
+        vec![]
+    };
+
+    let mut address_book = book::AddressBook::<Z>::new(cfg, white_list, gray_list, Vec::new());
+
+    for ban in peers_to_ban {
+        tracing::info!("Banning peer {}", ban);
+        address_book.ban_peer(ban, Duration::from_secs(60 * 60 * 24 * 365));
+    }
 
     Ok(address_book)
+}
+
+async fn read_ban_list<Z: BorshNetworkZone>(path: &Path) -> Vec<Z::Addr> {
+    let file = tokio::fs::read_to_string(path).await.unwrap();
+
+    let mut bans = vec![];
+    for line in file.lines() {
+        let mut ban_ids = <Z::Addr as NetZoneAddress>::read_ban_line(line);
+        bans.append(&mut ban_ids);
+    }
+
+    bans
 }
 
 use sealed::BorshNetworkZone;

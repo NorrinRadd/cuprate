@@ -3,7 +3,8 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-
+use std::net::Ipv4Addr;
+use std::str::FromStr;
 use futures::Stream;
 use tokio::net::{
     tcp::{OwnedReadHalf, OwnedWriteHalf},
@@ -34,6 +35,25 @@ impl NetZoneAddress for SocketAddr {
     fn should_add_to_peer_list(&self) -> bool {
         // TODO
         true
+    }
+
+    fn read_ban_line(s: &str) -> Vec<Self> {
+        let mut ips = Vec::new();
+
+        let mut s = s.split('/');
+        let ip = Ipv4Addr::from_str(s.next().unwrap()).unwrap();
+        if let Some(_) = s.next() {
+            let mut oct = ip.octets();
+            for i in 0..u8::MAX {
+                oct[3] = i;
+                ips.push(SocketAddr::new(Ipv4Addr::from(oct).into(), 0));
+            }
+        } else {
+            ips.push(SocketAddr::new(Ipv4Addr::from(ip).into(), 0));
+        }
+
+        ips
+
     }
 }
 

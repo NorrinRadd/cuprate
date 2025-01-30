@@ -182,7 +182,7 @@ impl<Z: BorshNetworkZone> AddressBook<Z> {
         }
     }
 
-    fn ban_peer(&mut self, addr: Z::Addr, time: Duration) {
+    pub fn ban_peer(&mut self, addr: Z::Addr, time: Duration) {
         if self.banned_peers.contains_key(&addr.ban_id()) {
             tracing::error!("Tried to ban peer twice, this shouldn't happen.");
         }
