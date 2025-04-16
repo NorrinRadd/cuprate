@@ -290,19 +290,41 @@ dependencies = [
 
 [[package]]
 name = "borsh"
-version = "1.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2506947f73ad44e344215ccd6403ac2ae18cd8e046e581a441bf8d199f257f03"
+version = "1.5.1"
+source = "git+https://github.com/willco-1/borsh-rs.git#e70919ca061cfb5b067fd87a70e4873c991654b1"
 dependencies = [
- "borsh-derive",
+ "borsh-derive 1.5.1",
+ "cfg_aliases",
+]
+
+[[package]]
+name = "borsh"
+version = "1.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8646f98db542e39fc66e68a20b2144f6a732636df7c2354e74645faaa433ce"
+dependencies = [
+ "borsh-derive 1.5.7",
  "cfg_aliases",
 ]
 
 [[package]]
 name = "borsh-derive"
-version = "1.5.3"
+version = "1.5.1"
+source = "git+https://github.com/willco-1/borsh-rs.git#e70919ca061cfb5b067fd87a70e4873c991654b1"
+dependencies = [
+ "once_cell",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+ "syn_derive",
+]
+
+[[package]]
+name = "borsh-derive"
+version = "1.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2593a3b8b938bd68373196c9832f516be11fa487ef4ae745eb282e6a56a7244"
+checksum = "fdd1d3c0c2f5833f22386f252fe8ed005c7f59fdcddeef025c01b4c3b9fd9ac3"
 dependencies = [
  "once_cell",
  "proc-macro-crate",
@@ -567,7 +589,7 @@ dependencies = [
 name = "cuprate-address-book"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 1.5.7",
  "cuprate-constants",
  "cuprate-p2p-core",
  "cuprate-pruning",
@@ -862,7 +884,7 @@ dependencies = [
 name = "cuprate-p2p"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 1.5.7",
  "bytes",
  "cuprate-address-book",
  "cuprate-async-buffer",
@@ -904,7 +926,7 @@ name = "cuprate-p2p-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "borsh",
+ "borsh 1.5.1",
  "cfg-if",
  "cuprate-helper",
  "cuprate-pruning",
@@ -927,7 +949,7 @@ dependencies = [
 name = "cuprate-pruning"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "borsh 1.5.7",
  "cuprate-constants",
  "thiserror",
 ]
@@ -976,7 +998,7 @@ name = "cuprate-test-utils"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "borsh",
+ "borsh 1.5.7",
  "cuprate-helper",
  "cuprate-p2p-core",
  "cuprate-types",
@@ -1076,7 +1098,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bitflags 2.6.0",
- "borsh",
+ "borsh 1.5.7",
  "bytemuck",
  "bytes",
  "cfg-if",
@@ -2416,6 +2438,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-error"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
+dependencies = [
+ "proc-macro-error-attr",
+ "proc-macro2",
+ "quote",
+ "version_check",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "version_check",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3016,6 +3061,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "syn_derive"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1329189c02ff984e9736652b1631330da25eaa6bc639089ed4915d25446cbe7b"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
 ]
 
 [[package]]
